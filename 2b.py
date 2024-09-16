@@ -16,6 +16,7 @@ Example Usage:
 
 import argparse
 import json
+import numpy as np
 
 
 '''Computes the actual string alignments given the traceback matrix.
@@ -29,7 +30,29 @@ Returns:
 '''
 def traceback(x, y, t):
     ''' Complete this function. '''
-    pass
+    DIAGONAL = 0
+    LEFT = 1
+    UP = 2
+    a_x = ''
+    a_y = ''
+    i = len(x)
+    j = len(y)
+    while i > 0 or j > 0:
+        if t[i][j] == DIAGONAL:
+            a_x = x[i - 1] + a_x
+            a_y = y[j - 1] + a_y
+            i -= 1
+            j -= 1
+        elif t[i][j] == LEFT:
+            a_x = x[i - 1] + a_x
+            a_y = '-' + a_y
+            i -= 1
+        elif t[i][j] == UP:
+            a_x = '-' + a_x
+            a_y = y[j - 1] + a_y
+            j -= 1
+    return a_x, a_y
+    
 
 
 '''Computes the score and alignment of two strings.
@@ -45,14 +68,42 @@ Returns:
 The latter two are computed using the above traceback method.
 '''
 def sequence_alignment(x, y, s, d):
+    # initializing
+    DIAGONAL = 0
+    LEFT = 1
+    UP = 2
+    
     ''' Recurrence matrix, redefine/use as necessary. '''
-    m = None
+    m = np.zeros((len(x)+1, len(y)+1))
     ''' Traceback matrix, redefine/use as necessary. '''
-    t = None
+    tb = np.zeros((len(x)+1, len(y)+1))
 
-    a_x, a_y = traceback(x, y, t)
-    ''' Complete this function. '''
-    pass
+    for i in range(len(x)+1):
+        m[i][0] = -d*i
+        tb[i][0] = LEFT
+    for j in range(len(y)+1):
+        m[0][j] = -d*j
+        tb[0][j] = UP
+
+    # fills in from left to right, top to bottom
+    for i in range(1, len(x)+1):
+        for j in range(1, len(y)+1):
+            # index for the string starts at 0
+            d_score = m[i-1][j-1] + s[x[i-1]][y[j-1]]
+            l_score = m[i-1][j] - d
+            u_score = m[i][j-1] - d
+            m[i][j] = max(d_score, l_score, u_score)
+
+            if max(d_score, l_score, u_score) == d_score:
+                tb[i][j] = DIAGONAL
+            elif max(d_score, l_score, u_score) == l_score:
+                tb[i][j] = LEFT
+            elif max(d_score, l_score, u_score) == u_score:
+                tb[i][j] = UP
+
+    a_x, a_y = traceback(x, y, tb)
+    score = m[len(x)][len(y)]
+    return score, (a_x, a_y)
 
 
 '''Prints two aligned sequences formatted for convenient inspection.
