@@ -17,6 +17,7 @@ Example Usage:
 
 import argparse
 import json
+import numpy as np
 
 
 '''Computes the actual string alignments given the traceback matrix.
@@ -32,7 +33,38 @@ Returns:
 '''
 def traceback(x, y, t):
     ''' Complete this function. '''
-    pass
+    MID = 0
+    BOT = 1
+    TOP = 2
+    a_x = ''
+    a_y = ''
+    i = len(x)
+    j = len(y)
+    curr_layer = int(t[i][j][MID])
+    
+    while i > 0 or j > 0:
+        if curr_layer == MID:
+            curr_layer = int(t[i][j][curr_layer])
+            a_x = x[i - 1] + a_x
+            a_y = y[j - 1] + a_y
+            i -= 1
+            j -= 1
+            
+        elif curr_layer == BOT:
+            curr_layer = int(t[i][j][curr_layer])
+            a_x = x[i - 1] + a_x
+            a_y = '-' + a_y
+            i -= 1
+
+        elif curr_layer == TOP:
+            curr_layer = int(t[i][j][curr_layer])
+            a_x = '-' + a_x
+            a_y = y[j - 1] + a_y
+            j -= 1
+        else: 
+            raise Exception("Not possible path")
+
+    return a_x, a_y
 
 
 '''Computes the score and alignment of two strings using an affine gap penalty.
@@ -50,17 +82,73 @@ The latter two are computed using the above traceback method.
 '''
 def affine_sequence_alignment(x, y, s, d, e):
     ''' Recurrence matrix, redefine/use as necessary. '''
-    m = None
+    m = np.zeros((len(x)+1, len(y)+1))
     ''' Recurrence matrix, redefine/use as necessary. '''
-    i_x = None
+    i_x = np.zeros((len(x)+1, len(y)+1))
     ''' Recurrence matrix, redefine/use as necessary. '''
-    i_y = None
+    i_y = np.zeros((len(x)+1, len(y)+1))
     ''' Traceback matrix, redefine/use as necessary. '''
-    t = None
+    tb = np.zeros((len(x)+1, len(y)+1, 3))
 
-    a_x, a_y = traceback(x, y, t)
-    ''' Complete this function. '''
-    pass
+    neg_inf = float('-inf')
+
+    m[0][0] = 0
+    i_x[0][0] = 0
+    i_y[0][0] = 0
+    
+    MID = 0
+    BOT = 1
+    TOP = 2
+
+    for i in range(1, len(x)+1):
+        m[i][0] = neg_inf
+        i_x[i][0] = i_x[i-1, 0] - e
+        i_y[i][0] = neg_inf
+        tb[i][0][BOT] = BOT
+
+    for j in range(1, len(y)+1):
+        m[0][j] = neg_inf 
+        i_x[0][j] = neg_inf
+        i_y[0][j] = i_y[0, j-1] - e
+        tb[0][j][TOP] = TOP
+
+    # slide 35 in lecture 05
+    for i in range(1, len(x)+1):
+        for j in range(1, len(y)+1):
+            from_mid = m[i-1][j-1] + s[x[i-1]][y[j-1]]
+            from_bot = i_x[i-1][j-1] +  s[x[i-1]][y[j-1]]
+            from_top = i_y[i-1][j-1] + s[x[i-1]][y[j-1]]
+            m_score = max(m[i-1][j-1] + s[x[i-1]][y[j-1]], i_x[i-1][j-1] + 
+                          s[x[i-1]][y[j-1]], i_y[i-1][j-1] + s[x[i-1]][y[j-1]])
+            m_pointer = MID if (m_score == from_mid) else (BOT if (m_score == from_bot) else TOP)
+            m[i][j] = m_score
+
+            from_mid = m[i-1][j] - d
+            from_bot = i_x[i-1][j] - e
+            x_score = max(m[i-1][j] - d, i_x[i-1][j] - e)
+            x_pointer = MID if (x_score == from_mid) else BOT
+            i_x[i][j] = x_score
+
+            from_mid = m[i, j-1] - d
+            from_top = i_y[i][j-1] - e
+            y_score = max(m[i, j-1] - d, i_y[i][j-1] - e)
+            y_pointer = MID if (y_score == from_mid) else TOP
+            i_y[i][j] = y_score
+
+            best = max(m_score, x_score, y_score)
+
+            if best == m_score:
+                tb[i][j][MID] = int(m_pointer)
+            elif best == x_score:
+                tb[i][j][BOT] = int(x_pointer)
+            else:
+            # elif best == y_score:
+                tb[i][j][TOP] = int(y_pointer)
+
+    score = max(m[len(x)][len(y)], i_x[len(x)][len(y)], i_y[len(x)][len(y)])
+    tb[len(x)][len(y)][MID] = tb[len(x)][len(y)][TOP] = tb[len(x)][len(y)][BOT] =  MID if (score == m[len(x)][len(y)]) else (BOT if (score == i_x[len(x)][len(y)]) else TOP)
+    a_x, a_y = traceback(x, y, tb)
+    return score, (a_x, a_y)
 
 
 '''Prints two aligned sequences formatted for convenient inspection.
