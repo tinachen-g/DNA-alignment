@@ -89,6 +89,7 @@ def affine_sequence_alignment(x, y, s, d, e):
     i_y = np.zeros((len(x)+1, len(y)+1))
     ''' Traceback matrix, redefine/use as necessary. '''
     tb = np.zeros((len(x)+1, len(y)+1, 3))
+    tb[:, :, :] = -1
 
     neg_inf = float('-inf')
 
@@ -118,35 +119,28 @@ def affine_sequence_alignment(x, y, s, d, e):
             from_mid = m[i-1][j-1] + s[x[i-1]][y[j-1]]
             from_bot = i_x[i-1][j-1] +  s[x[i-1]][y[j-1]]
             from_top = i_y[i-1][j-1] + s[x[i-1]][y[j-1]]
-            m_score = max(m[i-1][j-1] + s[x[i-1]][y[j-1]], i_x[i-1][j-1] + 
-                          s[x[i-1]][y[j-1]], i_y[i-1][j-1] + s[x[i-1]][y[j-1]])
+            m_score = max(from_mid, from_bot, from_top)
             m_pointer = MID if (m_score == from_mid) else (BOT if (m_score == from_bot) else TOP)
             m[i][j] = m_score
 
             from_mid = m[i-1][j] - d
             from_bot = i_x[i-1][j] - e
-            x_score = max(m[i-1][j] - d, i_x[i-1][j] - e)
+            x_score = max(from_mid, from_bot)
             x_pointer = MID if (x_score == from_mid) else BOT
             i_x[i][j] = x_score
 
             from_mid = m[i, j-1] - d
             from_top = i_y[i][j-1] - e
-            y_score = max(m[i, j-1] - d, i_y[i][j-1] - e)
+            y_score = max(from_mid, from_top)
             y_pointer = MID if (y_score == from_mid) else TOP
             i_y[i][j] = y_score
 
-            best = max(m_score, x_score, y_score)
-
-            if best == m_score:
-                tb[i][j][MID] = int(m_pointer)
-            elif best == x_score:
-                tb[i][j][BOT] = int(x_pointer)
-            else:
-            # elif best == y_score:
-                tb[i][j][TOP] = int(y_pointer)
+            tb[i][j][MID] = int(m_pointer)
+            tb[i][j][BOT] = int(x_pointer)
+            tb[i][j][TOP] = int(y_pointer)
 
     score = max(m[len(x)][len(y)], i_x[len(x)][len(y)], i_y[len(x)][len(y)])
-    tb[len(x)][len(y)][MID] = tb[len(x)][len(y)][TOP] = tb[len(x)][len(y)][BOT] =  MID if (score == m[len(x)][len(y)]) else (BOT if (score == i_x[len(x)][len(y)]) else TOP)
+    tb[len(x)][len(y)][MID] = tb[len(x)][len(y)][TOP] = tb[len(x)][len(y)][BOT] = MID if (score == m[len(x)][len(y)]) else (BOT if (score == i_x[len(x)][len(y)]) else TOP)
     a_x, a_y = traceback(x, y, tb)
     return score, (a_x, a_y)
 

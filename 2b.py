@@ -77,6 +77,7 @@ def sequence_alignment(x, y, s, d):
     m = np.zeros((len(x)+1, len(y)+1))
     ''' Traceback matrix, redefine/use as necessary. '''
     tb = np.zeros((len(x)+1, len(y)+1))
+    tb[:, :] = -1
 
     for i in range(len(x)+1):
         m[i][0] = -d*i
